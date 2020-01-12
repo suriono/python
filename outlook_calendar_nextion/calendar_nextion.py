@@ -83,11 +83,11 @@ class MyOutlook:
 
 
 myOutlook = MyOutlook()
-myserial = MySerial("COM10")   
+myserial = MySerial("COM12")   
 myserial.serOpen()
 
 counter = 0
-while counter < 5:
+while counter < 480:
   
    nowtime = datetime.datetime.now()
    todaymidnight = datetime.datetime(nowtime.year, nowtime.month, nowtime.day)
@@ -123,7 +123,7 @@ while counter < 5:
    #myserial.serClose()
    #break
    
-   time.sleep(6)
+   time.sleep(55)
    counter = counter + 1
    
 myserial.serClose()
