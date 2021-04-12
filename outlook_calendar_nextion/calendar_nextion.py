@@ -26,6 +26,7 @@ class MySerial:
       try: 
          self.ser.open()
       except Exception as e:
+         self.ser.close()
          print ("error open serial port: " , str(e))
          exit()
    
@@ -69,9 +70,10 @@ class MyOutlook:
          
          #print(a.Start, a.End, a.Subject, a.BusyStatus,endtimestamp) #, a.Duration a.Organizer) # , a.End)
          # show appointment up to 10 minutes before it ends
-         if nowtimestamp < (endtimestamp-600) and a.BusyStatus > 0:
+         if nowtimestamp < (endtimestamp-600) and a.BusyStatus > 1: # 0=free, 1=tentative
             if firsteventNotfound:
                #print("Busy=", a.BusyStatus, nowtimestamp, datetime.datetime.fromtimestamp(endtimestamp))
+               print("Busy Status", a.BusyStatus)
                event1 = a
                event1start = starttimestamp
                event1end   = endtimestamp
@@ -147,20 +149,25 @@ Reminder_Start_Flag = False
 
 myGUI = GUI()
 
-while not Reminder_Start_Flag:
-   myGUI.Update()
-   myGUI.setStatus("Waiting to start the Reminder .... ")
-   time.sleep(0.1)
+# === Comment the following lines to start automatically ==
+#while not Reminder_Start_Flag:
+#   myGUI.Update()
+#   myGUI.setStatus("Waiting to start the Reminder .... ")
+#   time.sleep(0.1)
+# === Uncomment the following lines to start automatically ==
+Reminder_Start_Flag = True
 
 # Starting the reminder ======================
 myOutlook = MyOutlook()
-myserial = MySerial(myGUI.PortName.get())   
+myserial = MySerial(myGUI.PortName.get())
 myserial.serOpen()
 
 counter = 0
 interval_update = 60       # interval to check the calendar
 start_time = time.time() - interval_update - 1 # make sure it starts 1st time
-while counter < 500:
+while 1:                   # to run indefinitely
+# while counter < 500:
+
    elapsed = time.time()-start_time
    myGUI.setStatus("Count down to check calendar: " + str(interval_update-int(elapsed)))
    myGUI.Update()
@@ -190,7 +197,7 @@ while counter < 500:
       myGUI.setMeeting(event1.Subject, event1.Location, event2.Subject, event2.Location)
       
       # 1st appointment
-      myserial.serWrite("1>" + event1.Subject + "<")
+      myserial.serWrite("1>" + event1.Subject[:25] + "<")
       # Delete the "SKY " in my particular case
       location = event1.Location.replace("SKY B1.2 ","").replace(" Room","")
       myserial.serWrite("2>" + location + "<")
@@ -199,7 +206,7 @@ while counter < 500:
    
     
       # 2nd appointment after the 1st one
-      myserial.serWrite("5>" + event2.Subject + "<")
+      myserial.serWrite("5>" + event2.Subject[:25] + "<")
       # Delete the "SKY " in my particular case
       location = event2.Location.replace("SKY B1.2 ","").replace(" Room","")
       myserial.serWrite("6>" + location + "<")
