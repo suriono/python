@@ -52,7 +52,7 @@ class MyOutlook:
       now    = datetime.datetime.now()
       nowtimestamp   = datetime.datetime.timestamp(now)
       begin  = checkstarttime.strftime("%m/%d/%Y %H:%M")
-      oneweek= checkstarttime + datetime.timedelta(days=7)
+      oneweek= checkstarttime + datetime.timedelta(days=14)
       end    = oneweek.date().strftime("%m/%d/%Y")
       appts  = self.Appts.Restrict("[Start] >= '" +begin+ "' AND [END] <= '" +end+ "'")
      
@@ -68,7 +68,7 @@ class MyOutlook:
          endtime = self.convert_OutlookTime_to_ISO8601(a.End) # datetime.datetime.strptime(startstr, '%Y-%m-%d %H:%M:%S.%f')
          endtimestamp = datetime.datetime.timestamp(endtime)
          
-         #print(a.Start, a.End, a.Subject, a.BusyStatus,endtimestamp) #, a.Duration a.Organizer) # , a.End)
+         #print("Appointments: " , a.Start, a.End, a.Subject, a.BusyStatus,endtimestamp) #, a.Duration a.Organizer) # , a.End)
          # show appointment up to 10 minutes before it ends
          if nowtimestamp < (endtimestamp-600) and a.BusyStatus > 1: # 0=free, 1=tentative
             if firsteventNotfound:
@@ -115,7 +115,7 @@ class GUI():
    PortName = StringVar()
    Label(topFrame, text="Serial Port").grid(row=0, column=0)
    Port_id = Entry(topFrame, textvariable=PortName, width=15)
-   PortName.set("COM12")
+   PortName.set("COM7")
    Port_id.grid(row=0, column=1)
    
    Button(topFrame, text="START reminder", command=Start_Reminder).grid(row=1, column=0)
@@ -180,6 +180,8 @@ while 1:                   # to run indefinitely
       myGUI.setStatus("Retrieving the Reminder ....")
       myGUI.Update()
       
+      #myGUI.Close()
+      
       nowtime = datetime.datetime.now()
       todaymidnight = datetime.datetime(nowtime.year, nowtime.month, nowtime.day)
 
@@ -198,7 +200,7 @@ while 1:                   # to run indefinitely
       
       # 1st appointment
       myserial.serWrite("1>" + event1.Subject[:25] + "<")
-      # Delete the "SKY " in my particular case
+      # Delete the "SKY " in my particular case for room number
       location = event1.Location.replace("SKY B1.2 ","").replace(" Room","")
       myserial.serWrite("2>" + location + "<")
       myserial.serWrite("3>" + str(nexttime1) + "<")
@@ -211,10 +213,7 @@ while 1:                   # to run indefinitely
       location = event2.Location.replace("SKY B1.2 ","").replace(" Room","")
       myserial.serWrite("6>" + location + "<")
       myserial.serWrite("7>" + str(nexttime2) + "<")
-   
-      #myserial.serClose()
-      #break
-    
+       
    time.sleep(0.5)
 
 myserial.serClose()
