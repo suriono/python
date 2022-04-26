@@ -3,20 +3,18 @@ from tkinter import ttk, messagebox
 import sys, json, time, getpass, re
 from selenium import webdriver
 from datetime import date, timedelta
-import subprocess
+import subprocess, os
 from base64 import b64encode, b64decode
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
-#from Crypto.Random import get_random_bytes
 
 
-project_max = 10  # maximum number display projects
+project_max = 20  # maximum number display projects
 
 # ================= Encryption ====================================
 class Cryptopy:
    id_machine = subprocess.check_output('wmic csproduct get uuid').decode().split('\n')[1].strip().replace('-','')
    key = id_machine.encode('UTF-8')
-   #def __init__(self, orig_text):
    def encrypt(self, orig_text):
       text_byte = orig_text.encode('UTF-8')
       cipher = AES.new(self.key, AES.MODE_CBC)   
@@ -32,6 +30,7 @@ class Cryptopy:
       ct = b64decode(b64['ciphertext'])
       cipher = AES.new(self.key, AES.MODE_CBC, iv)
       self.decrypted = unpad(cipher.decrypt(ct), AES.block_size).decode('UTF-8')
+      print(self.decrypted)
       return self.decrypted
       
 
@@ -52,11 +51,16 @@ class TimeCard:
          tmp['desc'] = ""
          self.data['projects'].append(tmp)
       try:
-         with open('timecard.json', 'r') as f:
+         try:
+            timepath = sys.argv[1].replace("\\","/")  # + "/timecard.json"
+            os.chdir(timepath)
+            print("======", "using path", timepath)
+         except:
+            pass
+         with open( 'timecard.json' , 'r') as f:
             self.data = json.load(f)
             self.data.pop('passwd', None) #obsolete 'passwd', remove in the future
             try:
-               #   self.data['username'] # it was removed, back again
                self.data['encrypt_passwd']  # new one, remove in the future
                self.passwd_plain = self.passwd_encrypt.decrypt(self.data['encrypt_passwd'])
             except:
@@ -112,11 +116,13 @@ def setvisProjects():
    winVisibleProj = Toplevel(master)
    Button(winVisibleProj, text ="Close and Save Visible Projects",
           command = lambda:Save_visible_projects(visbox)).pack()
-   visframe1 = Frame(winVisibleProj)
-   visframe2 = Frame(winVisibleProj)
-   visframe1.pack(side=LEFT)
-   visframe2.pack(side=LEFT)
+   visframes = []
+   nvisframe = 6
+   for nn in range(nvisframe):
+      visframes.append(Frame(winVisibleProj))
+      visframes[nn].pack(side=LEFT)
   
+   project_list_count = 0
    for nn in range(len(project_list)):
       visbox.append(BooleanVar())
       try:
@@ -127,10 +133,9 @@ def setvisProjects():
       except:
          visbox[nn].set(True)
       
-      if nn < len(project_list)/2:
-         tt = Checkbutton(visframe1,text=project_list[nn], variable=visbox[nn])
-      else:
-         tt = Checkbutton(visframe2,text=project_list[nn] , variable=visbox[nn])
+      frameno = project_list_count % nvisframe
+      project_list_count = project_list_count + 1
+      tt = Checkbutton(visframes[frameno],text=project_list[nn], variable=visbox[nn])
       tt.var = visbox[nn]  
       tt.pack()
 
@@ -140,10 +145,6 @@ def Save_project():
    timeCard.data['username']       = userwid.get()
    timeCard.passwd_plain           = passwid.get()
    timeCard.data['encrypt_passwd'] = timeCard.passwd_encrypt.encrypt(passwid.get())
-   #print(timeCard.passwd_encrypt.encrypted_json)
-   #timeCard.passwd_encrypt.decrypt(timeCard.passwd_encrypt.encrypted_json)
-   #print(timeCard.passwd_encrypt.decrypted)
-
 
    for nn in range(project_max):
       timeCard.data['projects'][nn]['name'] = menusProj[nn].get()
@@ -172,7 +173,7 @@ def Open_web():
       try:
          driver = webdriver.Firefox()  # Optional argument, if not specified will search path.
       except:
-         messagebox.showerror("Time Card Browser Error", "Either the browser version do not match the latest selenium driver or browser driver path is not detected")
+         messagebox.showerror("Browser driver Error", "Try download the latest Chromedriver or Firefox Geckodriver")
          master.destroy()
          sys.exit(0)
    driver.get('http://fab4www.cmi.cypress.com/cgi-bin/foundry_time.cgi');
@@ -287,7 +288,7 @@ def Submit_timecard():
 # ======================== Main Window Widgets ====================
 
 master = Tk()
-master.title("Time Card Submission Updated: Mar 06, 2019")
+master.title("Time Card Submission. App version April 2022 by Usman Suriono")
 timeCard = TimeCard()
 stopWatch = StopWatch()
 driver = None

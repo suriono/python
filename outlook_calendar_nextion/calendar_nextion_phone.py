@@ -1,28 +1,6 @@
 import win32com.client, datetime, time, serial
 from tkinter import *
-import firebase_admin, time
-from firebase_admin import credentials, db
 
-# =================================================
-
-class Firebase_Python():  
-   def set_Credential(self):
-      try:
-         cred = credentials.Certificate("C:/Users/UZMN/OneDrive - SkyWater Technology/Documents/GitHub/home0-90616-firebase-adminsdk-kafvj-eb40a1993f.json")
-         firebase_admin.initialize_app(cred, {
-            'databaseURL': "https://home0-90616.firebaseio.com"
-         })
-      except:
-         pass
-      
-   def get_Json_value(self):
-      ref = db.reference('officewhereabout')
-      print(ref.get())
-      
-   def put_Message(self, key, msg):
-      firebase_ref = db.reference('officewhereabout')
-      firebase_ref.update({key:msg})
-      
 # =================================================
 
 class MySerial:
@@ -61,9 +39,19 @@ class MySerial:
 class MyOutlook:
    myApp = win32com.client.Dispatch("Outlook.Application")
    nameSpace = myApp.GetNamespace("MAPI")
+   
    Appts = nameSpace.GetDefaultFolder(9).Items
    Appts.IncludeRecurrences = True
    Appts.Sort("[Start]")
+   
+   #recipient = nameSpace.CreateRecipient("Pete.Manos@SkyWaterTechnology.com")
+   #print(recipient)
+   Rto_group = nameSpace.Folders(3).Items
+   Rto_group.Sort("[Start]")
+   #print(nameSpace.Folders(3).Items.Sort("[Start]"), "==================")
+   #print(Rto_group.Restrict("[Start] >= '" +begin+ "' AND [END] <= '" +end+ "'"))
+   
+   
    
    def convert_OutlookTime_to_ISO8601(self, outlooktime):
       timestr = outlooktime.strftime("%Y-%m-%d %H:%M:%S.%f")
@@ -71,17 +59,32 @@ class MyOutlook:
    
    
    def get_Appointment(self, checkstarttime):
+   
       now    = datetime.datetime.now()
       nowtimestamp   = datetime.datetime.timestamp(now)
       begin  = checkstarttime.strftime("%m/%d/%Y %H:%M")
-      oneweek= checkstarttime + datetime.timedelta(days=14)
+      oneweek= checkstarttime + datetime.timedelta(days=7)
       end    = oneweek.date().strftime("%m/%d/%Y")
       appts  = self.Appts.Restrict("[Start] >= '" +begin+ "' AND [END] <= '" +end+ "'")
+      
+      rto_appts  = self.Rto_group.Restrict("[Start] >= '" +begin+ "' AND [END] <= '" +end+ "'")
+      
+      
      
       event1 = None
       event1start = 0
       event2 = None
       firsteventNotfound = True
+      
+      for a in rto_appts:
+         starttime = self.convert_OutlookTime_to_ISO8601(a.Start) # datetime.datetime.strptime(startstr, '%Y-%m-%d %H:%M:%S.%f')
+         starttimestamp = datetime.datetime.timestamp(starttime)
+         
+         endtime = self.convert_OutlookTime_to_ISO8601(a.End) # datetime.datetime.strptime(startstr, '%Y-%m-%d %H:%M:%S.%f')
+         endtimestamp = datetime.datetime.timestamp(endtime)
+         
+         #if nowtimestamp < (endtimestamp-600):
+         print(starttime, "=========================")
       
       for a in appts:
          starttime = self.convert_OutlookTime_to_ISO8601(a.Start) # datetime.datetime.strptime(startstr, '%Y-%m-%d %H:%M:%S.%f')
@@ -90,12 +93,12 @@ class MyOutlook:
          endtime = self.convert_OutlookTime_to_ISO8601(a.End) # datetime.datetime.strptime(startstr, '%Y-%m-%d %H:%M:%S.%f')
          endtimestamp = datetime.datetime.timestamp(endtime)
          
-         #print("Appointments: " , a.Start, a.End, a.Subject, a.BusyStatus,endtimestamp) #, a.Duration a.Organizer) # , a.End)
+         #print(a.Start, a.End, a.Subject, a.BusyStatus,endtimestamp) #, a.Duration a.Organizer) # , a.End)
          # show appointment up to 10 minutes before it ends
          if nowtimestamp < (endtimestamp-600) and a.BusyStatus > 1: # 0=free, 1=tentative
             if firsteventNotfound:
                #print("Busy=", a.BusyStatus, nowtimestamp, datetime.datetime.fromtimestamp(endtimestamp))
-               print("Busy Status", a.BusyStatus)
+               #print("Busy Status", a.BusyStatus)
                event1 = a
                event1start = starttimestamp
                event1end   = endtimestamp
@@ -137,7 +140,7 @@ class GUI():
    PortName = StringVar()
    Label(topFrame, text="Serial Port").grid(row=0, column=0)
    Port_id = Entry(topFrame, textvariable=PortName, width=15)
-   PortName.set("COM7")
+   PortName.set("COM10")
    Port_id.grid(row=0, column=1)
    
    Button(topFrame, text="START reminder", command=Start_Reminder).grid(row=1, column=0)
@@ -181,18 +184,8 @@ Reminder_Start_Flag = True
 
 # Starting the reminder ======================
 myOutlook = MyOutlook()
-myserial = MySerial(myGUI.PortName.get())
-myserial.serOpen()
-
-# -------- Firebase -----------
-myFirebase = Firebase_Python()
-myFirebase.set_Credential()
-myFirebase.get_Json_value()
-now_hour = datetime.datetime.fromtimestamp(time.time()).hour
-second_to_6PM = 18 - now_hour 
-myFirebase.put_Message("expiration",(int(time.time())+3600*second_to_6PM)*1000)
-myFirebase.put_Message("location",'"In the Building"')
-# -----------------------------
+#myserial = MySerial(myGUI.PortName.get())
+#myserial.serOpen()
 
 counter = 0
 interval_update = 60       # interval to check the calendar
@@ -212,8 +205,6 @@ while 1:                   # to run indefinitely
       myGUI.setStatus("Retrieving the Reminder ....")
       myGUI.Update()
       
-      #myGUI.Close()
-      
       nowtime = datetime.datetime.now()
       todaymidnight = datetime.datetime(nowtime.year, nowtime.month, nowtime.day)
 
@@ -231,24 +222,24 @@ while 1:                   # to run indefinitely
       myGUI.setMeeting(event1.Subject, event1.Location, event2.Subject, event2.Location)
       
       # 1st appointment
-      myserial.serWrite("1>" + event1.Subject[:25] + "<")
+#      myserial.serWrite("1>" + event1.Subject[:25] + "<")
       # Delete the "SKY " in my particular case for room number
       location = event1.Location.replace("SKY B1.2 ","").replace(" Room","")
-      myserial.serWrite("2>" + location + "<")
-      myserial.serWrite("3>" + str(nexttime1) + "<")
-      myserial.serWrite("4>" + str(time1end)  + "<")
+#      myserial.serWrite("2>" + location + "<")
+#      myserial.serWrite("3>" + str(nexttime1) + "<")
+#      myserial.serWrite("4>" + str(time1end)  + "<")
    
     
       # 2nd appointment after the 1st one
-      myserial.serWrite("5>" + event2.Subject[:25] + "<")
+#      myserial.serWrite("5>" + event2.Subject[:25] + "<")
       # Delete the "SKY " in my particular case
       location = event2.Location.replace("SKY B1.2 ","").replace(" Room","")
-      myserial.serWrite("6>" + location + "<")
-      myserial.serWrite("7>" + str(nexttime2) + "<")
+#      myserial.serWrite("6>" + location + "<")
+#      myserial.serWrite("7>" + str(nexttime2) + "<")
        
    time.sleep(0.5)
 
-myserial.serClose()
+#myserial.serClose()
 myGUI.Close()
 
 
